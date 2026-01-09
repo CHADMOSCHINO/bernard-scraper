@@ -74,6 +74,29 @@ function scraperEnv() {
 app.use(cors());
 app.use(express.json());
 
+// Basic landing + health endpoints (helpful for browser checks / Render health checks)
+app.get('/', (req, res) => {
+    res
+        .status(200)
+        .type('text/plain; charset=utf-8')
+        .send(
+            [
+                'Bernard Scraper API is running.',
+                '',
+                'Try:',
+                '  GET  /api/status',
+                '  GET  /api/config',
+                '  POST /api/scan/single',
+                '  GET  /api/results/latest',
+                '',
+            ].join('\n')
+        );
+});
+
+app.get('/healthz', (req, res) => {
+    res.status(200).json({ ok: true });
+});
+
 // State
 let isRunning = false;
 let logs = [];
