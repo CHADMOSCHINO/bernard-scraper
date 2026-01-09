@@ -127,6 +127,29 @@ export async function getRecentLeads(limit = 100) {
 }
 
 /**
+ * Get lightweight stats for the dashboard
+ */
+export async function getStats() {
+    const db = getPool();
+    const [{ rows: leadCountRows }, { rows: runCountRows }, { rows: latestRunRows }] = await Promise.all([
+        db.query(`SELECT COUNT(*)::int AS count FROM leads`),
+        db.query(`SELECT COUNT(*)::int AS count FROM runs`),
+        db.query(
+            `SELECT id, started_at, finished_at, city, state, niche, max_leads, status, total_leads
+             FROM runs
+             ORDER BY started_at DESC
+             LIMIT 1`
+        ),
+    ]);
+
+    return {
+        totalLeads: leadCountRows?.[0]?.count ?? 0,
+        totalRuns: runCountRows?.[0]?.count ?? 0,
+        latestRun: latestRunRows?.[0] ?? null,
+    };
+}
+
+/**
  * Initialize database schema (run on startup if needed)
  */
 export async function initDB() {

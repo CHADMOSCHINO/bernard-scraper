@@ -9,7 +9,7 @@ import { spawn } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { getRuns, getLeadsForRun, getRecentLeads, initDB } from './db/db.js';
+import { getRuns, getLeadsForRun, getRecentLeads, getStats, initDB } from './db/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -106,6 +106,16 @@ app.post('/api/config', (req, res) => {
 // Get status
 app.get('/api/status', (req, res) => {
     res.json({ isRunning, logs: logs.slice(-30) });
+});
+
+// Lightweight stats for dashboard cards
+app.get('/api/stats', async (req, res) => {
+    try {
+        const stats = await getStats();
+        res.json(stats);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
 // Run single scan
