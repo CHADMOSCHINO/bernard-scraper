@@ -1,0 +1,99 @@
+═══════════════════════════════════════════════════════════════
+RAILWAY DEPLOYMENT - COPY/PASTE COMMANDS
+═══════════════════════════════════════════════════════════════
+
+📂 STEP 1: Navigate to Project
+───────────────────────────────────────────────────────────────
+cd "/Users/c/Desktop/automation for leadscraper/bernard-scraper"
+
+
+🔐 STEP 2: Login to Railway (opens browser)
+───────────────────────────────────────────────────────────────
+railway login
+
+
+🎯 STEP 3: Initialize Project
+───────────────────────────────────────────────────────────────
+railway init
+
+Type: bernard-scraper
+Press: Enter
+
+
+🚀 STEP 4: Deploy Code (takes 2-3 minutes)
+───────────────────────────────────────────────────────────────
+railway up
+
+
+🌐 STEP 5: Generate Public Domain
+───────────────────────────────────────────────────────────────
+railway domain
+
+** COPY THE URL THAT APPEARS **
+
+
+🔑 STEP 6: Set Environment Variables
+───────────────────────────────────────────────────────────────
+railway variables set NOTION_API_KEY="paste_your_notion_api_key_here"
+
+railway variables set NOTION_DATABASE_ID="paste_your_notion_database_id_here"
+
+WHERE TO FIND THESE:
+• NOTION_API_KEY: https://www.notion.so/my-integrations
+• NOTION_DATABASE_ID: Your Notion database URL (32-character code)
+
+
+✅ STEP 7: Test Deployment
+───────────────────────────────────────────────────────────────
+railway logs
+
+railway status
+
+curl https://YOUR_URL.up.railway.app/api/status
+
+
+═══════════════════════════════════════════════════════════════
+USEFUL COMMANDS (use anytime)
+═══════════════════════════════════════════════════════════════
+
+railway logs              # View recent logs
+railway logs --follow     # Follow logs in real-time
+railway status            # Check service health
+railway open              # Open dashboard in browser
+railway restart           # Restart your service
+railway variables         # List environment variables
+railway domain            # Show your public URL
+
+
+═══════════════════════════════════════════════════════════════
+TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════
+
+If deployment fails:
+railway logs
+railway up --force
+
+If service won't start:
+railway variables        # Check env vars are set
+railway restart
+
+If URL not working:
+railway domain           # Regenerate domain
+railway status           # Check health
+
+
+═══════════════════════════════════════════════════════════════
+AFTER DEPLOYMENT - UPDATE FRONTEND
+═══════════════════════════════════════════════════════════════
+
+1. Copy your Railway URL
+2. Go to: https://app.netlify.com
+3. Find: bernard-dashboard site
+4. Go to: Site settings → Environment variables
+5. Add variable:
+   Key: NEXT_PUBLIC_API_URL
+   Value: https://your-railway-url.up.railway.app
+6. Click: "Redeploy site"
+
+
+═══════════════════════════════════════════════════════════════
