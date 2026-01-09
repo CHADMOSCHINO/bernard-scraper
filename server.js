@@ -43,18 +43,24 @@ function writeSettingsSafe(settings) {
 }
 
 function normalizeNotionDatabaseId(raw) {
-    const trimmed = (raw ?? '').trim();
+    // Accept: UUID, 32-hex id, quoted values, and values with whitespace/newlines.
+    let trimmed = (raw ?? '').trim();
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+        trimmed = trimmed.slice(1, -1).trim();
+    }
+    const cleaned = trimmed.replace(/[^0-9a-fA-F-]/g, '');
+    const hex = cleaned.replace(/-/g, '');
     // Notion accepts UUIDs; allow 32-char IDs (no hyphens) too.
-    if (/^[0-9a-fA-F]{32}$/.test(trimmed)) {
+    if (/^[0-9a-fA-F]{32}$/.test(hex)) {
         return (
-            trimmed.slice(0, 8) + '-' +
-            trimmed.slice(8, 12) + '-' +
-            trimmed.slice(12, 16) + '-' +
-            trimmed.slice(16, 20) + '-' +
-            trimmed.slice(20)
+            hex.slice(0, 8) + '-' +
+            hex.slice(8, 12) + '-' +
+            hex.slice(12, 16) + '-' +
+            hex.slice(16, 20) + '-' +
+            hex.slice(20)
         ).toLowerCase();
     }
-    return trimmed;
+    return cleaned.trim();
 }
 
 function scraperEnv() {
@@ -171,6 +177,29 @@ app.post('/api/clear', (req, res) => {
 // Get logs
 app.get('/api/logs', (req, res) => {
     res.json({ logs: logs.slice(-50) });
+});
+
+// Get latest results written by main.js (fallback output)
+app.get('/api/results/latest', (req, res) => {
+    try {
+        const jsonPath = path.join(__dirname, 'output', 'latest.json');
+        const raw = readFileSync(jsonPath, 'utf-8');
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.send(raw);
+    } catch (error) {
+        res.status(404).json({ error: 'No results yet' });
+    }
+});
+
+app.get('/api/results/latest.csv', (req, res) => {
+    try {
+        const csvPath = path.join(__dirname, 'output', 'latest.csv');
+        const raw = readFileSync(csvPath, 'utf-8');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.send(raw);
+    } catch {
+        res.status(404).send('No results yet\n');
+    }
 });
 
 function log(msg) {

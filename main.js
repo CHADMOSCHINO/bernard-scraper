@@ -4,10 +4,12 @@
  * Limits to 10 high-quality leads per run
  */
 
-import { readFileSync, existsSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
+import path from 'path';
 import { chromium } from 'playwright';
 import { Client } from '@notionhq/client';
 import 'dotenv/config';
+import { checkWebsite } from './scrapers/website-checker.js';
 
 // Load config or use defaults
 const configPath = './config/settings.json';
@@ -26,18 +28,26 @@ if (existsSync(configPath)) {
 // Initialize Notion
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
 function normalizeNotionDatabaseId(raw) {
-    const trimmed = (raw ?? '').trim();
-    // Notion accepts UUIDs; some people paste 32-char IDs without hyphens.
-    if (/^[0-9a-fA-F]{32}$/.test(trimmed)) {
+    // Accept: UUID, 32-hex id, quoted values, and values with whitespace/newlines.
+    let trimmed = (raw ?? '').trim();
+    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
+        trimmed = trimmed.slice(1, -1).trim();
+    }
+    // Strip everything except hex digits and hyphens
+    const cleaned = trimmed.replace(/[^0-9a-fA-F-]/g, '');
+    const hex = cleaned.replace(/-/g, '');
+
+    // Notion accepts UUIDs; allow 32-char IDs without hyphens.
+    if (/^[0-9a-fA-F]{32}$/.test(hex)) {
         return (
-            trimmed.slice(0, 8) + '-' +
-            trimmed.slice(8, 12) + '-' +
-            trimmed.slice(12, 16) + '-' +
-            trimmed.slice(16, 20) + '-' +
-            trimmed.slice(20)
+            hex.slice(0, 8) + '-' +
+            hex.slice(8, 12) + '-' +
+            hex.slice(12, 16) + '-' +
+            hex.slice(16, 20) + '-' +
+            hex.slice(20)
         ).toLowerCase();
     }
-    return trimmed;
+    return cleaned.trim();
 }
 
 const databaseId = normalizeNotionDatabaseId(process.env.NOTION_DATABASE_ID);
@@ -84,6 +94,9 @@ async function main() {
         const topLeads = unique.slice(0, config.maxLeads);
         console.log(`✂️  Keeping top ${topLeads.length} leads\n`);
 
+        // Always persist results (so you never lose leads)
+        writeOutputs(topLeads);
+
         // Push to Notion
         await pushToNotion(topLeads);
 
@@ -118,50 +131,46 @@ async function scrapeGoogleMaps(browser) {
             }
         }
 
-        // Extract businesses
-        const results = await page.evaluate(() => {
-            const businesses = [];
-            const items = document.querySelectorAll('[role="feed"] > div > div > a');
+        // Extract businesses (open details so we can reliably read website/phone/address)
+        const results = [];
+        const items = page.locator('[role="feed"] > div > div > a');
+        const count = Math.min(await items.count(), 25);
 
-            items.forEach(item => {
-                const name = item.getAttribute('aria-label');
-                if (!name || name.length < 3) return;
+        for (let i = 0; i < count; i++) {
+            try {
+                await items.nth(i).click({ timeout: 10000 });
+                await page.waitForTimeout(1500);
 
-                const parent = item.closest('[role="feed"] > div > div');
-                let phone = null;
-                let address = null;
-                let hasWebsite = false;
+                const details = await extractGoogleMapsDetails(page);
+                if (!details?.name) continue;
 
-                if (parent) {
-                    const text = parent.innerText;
+                // Website classification
+                const websiteStatus = await checkWebsite(browser, details.website);
+                const keep =
+                    websiteStatus.status === 'none' ||
+                    websiteStatus.status === 'broken' ||
+                    websiteStatus.status === 'placeholder' ||
+                    websiteStatus.status === 'outdated';
 
-                    // Check for website indicators
-                    hasWebsite = text.includes('Website') || text.includes('.com') || text.includes('.net');
+                if (!keep) continue;
 
-                    // Extract phone
-                    const phoneMatch = text.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
-                    if (phoneMatch) phone = phoneMatch[0];
+                const email = details.website ? await extractEmailsFromWebsite(browser, details.website) : '';
 
-                    // Extract address
-                    const lines = text.split('\n');
-                    for (const line of lines) {
-                        if (/\d+\s+\w+\s+(St|Ave|Rd|Dr|Blvd|Way|Ln)/i.test(line)) {
-                            address = line.trim();
-                            break;
-                        }
-                    }
-                }
+                results.push({
+                    name: details.name,
+                    phone: details.phone || null,
+                    address: details.address || null,
+                    website: details.website || '',
+                    email: email || '',
+                    websiteStatus,
+                    source: 'Google Maps',
+                });
+            } catch {
+                // Ignore per-item errors and continue
+            }
+        }
 
-                // Only keep businesses WITHOUT websites
-                if (!hasWebsite) {
-                    businesses.push({ name: name.trim(), phone, address, source: 'Google Maps' });
-                }
-            });
-
-            return businesses;
-        });
-
-        console.log(`  Found ${results.length} businesses without websites`);
+        console.log(`  Found ${results.length} businesses (none/broken/placeholder/outdated websites)`);
         leads.push(...results);
 
     } catch (error) {
@@ -329,11 +338,14 @@ async function pushToNotion(leads) {
                         title: [{ text: { content: lead.name } }],
                     },
                     'Phone': lead.phone ? { phone_number: lead.phone } : { phone_number: null },
+                    'Email': lead.email ? { email: lead.email } : { email: null },
+                    'Website': lead.website ? { url: lead.website } : { url: null },
+                    'Address': lead.address ? { rich_text: [{ text: { content: lead.address } }] } : { rich_text: [] },
                     'city': {
                         rich_text: [{ text: { content: config.city } }],
                     },
                     'Website Status': {
-                        select: { name: 'None' },
+                        select: { name: (lead.websiteStatus?.status || 'none').charAt(0).toUpperCase() + (lead.websiteStatus?.status || 'none').slice(1) },
                     },
                     'hotness': {
                         select: { name: 'Premium' }, // No website = Premium opportunity
@@ -356,6 +368,119 @@ async function pushToNotion(leads) {
     }
 
     console.log(`\n✅ Added ${success}/${leads.length} leads to Notion`);
+}
+
+function writeOutputs(leads) {
+    const outDir = path.join(process.cwd(), 'output');
+    mkdirSync(outDir, { recursive: true });
+
+    const jsonPath = path.join(outDir, 'latest.json');
+    const csvPath = path.join(outDir, 'latest.csv');
+
+    writeFileSync(jsonPath, JSON.stringify({ generatedAt: new Date().toISOString(), leads }, null, 2));
+    writeFileSync(csvPath, toCsv(leads));
+}
+
+function toCsv(leads) {
+    const cols = ['name', 'phone', 'email', 'address', 'website', 'source', 'websiteStatus'];
+    const esc = (v) => {
+        const s = v == null ? '' : String(v);
+        const safe = s.replace(/"/g, '""');
+        return `"${safe}"`;
+    };
+    const rows = [
+        cols.join(','),
+        ...leads.map((l) =>
+            cols
+                .map((c) => {
+                    if (c === 'websiteStatus') return esc(l.websiteStatus?.status || '');
+                    return esc(l[c]);
+                })
+                .join(',')
+        ),
+    ];
+    return rows.join('\n') + '\n';
+}
+
+async function extractEmailsFromWebsite(browser, url) {
+    const page = await browser.newPage();
+    try {
+        await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        await page.waitForTimeout(500);
+
+        const emails = new Set();
+        const addFromText = (text) => {
+            const matches = text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
+            for (const m of matches) {
+                const e = m.toLowerCase();
+                if (e.endsWith('@example.com')) continue;
+                emails.add(e);
+            }
+        };
+
+        addFromText(await page.content());
+        const bodyText = await page.locator('body').textContent().catch(() => '');
+        if (bodyText) addFromText(bodyText);
+
+        // Try a couple likely “contact” pages if available
+        const hrefs = await page.evaluate(() => {
+            const out = [];
+            document.querySelectorAll('a[href]').forEach((a) => {
+                const href = a.getAttribute('href') || '';
+                const text = (a.textContent || '').toLowerCase();
+                if (text.includes('contact') || text.includes('about')) out.push(href);
+            });
+            return Array.from(new Set(out)).slice(0, 3);
+        });
+
+        for (const href of hrefs) {
+            try {
+                const nextUrl = new URL(href, url).toString();
+                await page.goto(nextUrl, { waitUntil: 'domcontentloaded', timeout: 10000 });
+                await page.waitForTimeout(300);
+                addFromText(await page.content());
+                const t = await page.locator('body').textContent().catch(() => '');
+                if (t) addFromText(t);
+            } catch {
+                // ignore
+            }
+        }
+
+        return Array.from(emails)[0] || '';
+    } catch {
+        return '';
+    } finally {
+        await page.close();
+    }
+}
+
+async function extractGoogleMapsDetails(page) {
+    const name = await page.locator('h1.DUwDvf, h1').first().textContent().catch(() => null);
+
+    const phone = await page
+        .locator('button[data-item-id^="phone:"], button[data-item-id="phone"], button[aria-label^="Phone"]')
+        .first()
+        .textContent()
+        .catch(() => null);
+
+    const address = await page
+        .locator('button[data-item-id="address"], button[aria-label^="Address"]')
+        .first()
+        .textContent()
+        .catch(() => null);
+
+    const websiteHref = await page
+        .locator('a[data-item-id="authority"], a[data-item-id="website"], a[aria-label^="Website"]')
+        .first()
+        .getAttribute('href')
+        .catch(() => null);
+
+    return {
+        name: name?.trim() || null,
+        phone: phone?.trim() || null,
+        address: address?.trim() || null,
+        website: websiteHref?.trim() || '',
+    };
 }
 
 // Run
