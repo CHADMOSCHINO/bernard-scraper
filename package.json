@@ -9,6 +9,7 @@
         "server": "node server.js",
         "scrape": "node main.js --run",
         "scrape:city": "node main.js --city",
+        "postinstall": "npx playwright install --with-deps chromium || npx playwright install chromium",
         "test": "node --test",
         "test-notion": "node test-notion.js",
         "test-all": "node test-all-configs.js"
