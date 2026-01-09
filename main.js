@@ -131,7 +131,7 @@ async function scrapeGoogleMaps(browser) {
             }
         }
 
-        // Extract businesses
+        // Extract businesses from search results (fast pass)
         const results = await page.evaluate(() => {
             const businesses = [];
             const items = document.querySelectorAll('[role="feed"] > div > div > a');
@@ -171,7 +171,7 @@ async function scrapeGoogleMaps(browser) {
                         name: name.trim(), 
                         phone, 
                         address,
-                        email: '', // Will be enriched if we have a website later
+                        email: '',
                         source: 'Google Maps' 
                     });
                 }
@@ -181,6 +181,48 @@ async function scrapeGoogleMaps(browser) {
         });
 
         console.log(`  Found ${results.length} businesses without websites`);
+
+        // Enrich leads missing phone numbers (open detail panel for those only)
+        const itemsLocator = page.locator('[role="feed"] > div > div > a');
+        const itemCount = Math.min(await itemsLocator.count(), results.length);
+        let enriched = 0;
+
+        for (let i = 0; i < itemCount && enriched < 10; i++) {
+            const lead = results[i];
+            if (!lead || lead.phone) continue; // Skip if already has phone
+
+            try {
+                // Click to open detail panel
+                await itemsLocator.nth(i).click({ timeout: 5000 });
+                await page.waitForTimeout(1500);
+
+                // Extract phone from detail panel
+                const detailPhone = await page.evaluate(() => {
+                    const buttons = Array.from(document.querySelectorAll('button[data-item-id*="phone"]'));
+                    for (const btn of buttons) {
+                        const match = btn.getAttribute('data-item-id')?.match(/phone:tel:([\d\s\-\(\)]+)/);
+                        if (match) return match[1].trim();
+                    }
+                    
+                    // Fallback: search visible text
+                    const text = document.body.innerText;
+                    const phoneMatch = text.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
+                    return phoneMatch ? phoneMatch[0] : null;
+                });
+
+                if (detailPhone) {
+                    lead.phone = detailPhone;
+                    enriched++;
+                }
+            } catch (err) {
+                // Skip if can't open detail
+            }
+        }
+
+        if (enriched > 0) {
+            console.log(`  📞 Enriched ${enriched} leads with phone numbers from detail panels`);
+        }
+
         leads.push(...results);
 
     } catch (error) {
