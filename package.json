@@ -10,9 +10,7 @@
         "scrape": "node main.js --run",
         "scrape:city": "node main.js --city",
         "postinstall": "npx playwright install --with-deps chromium || npx playwright install chromium",
-        "test": "node --test",
-        "test-notion": "node test-notion.js",
-        "test-all": "node test-all-configs.js"
+        "test": "node --test"
     },
     "keywords": [
         "lead-generation",
@@ -23,7 +21,6 @@
     "author": "Bernard AI",
     "license": "MIT",
     "dependencies": {
-        "@notionhq/client": "^2.2.0",
         "axios": "^1.6.0",
         "cheerio": "^1.0.0-rc.12",
         "cors": "^2.8.5",

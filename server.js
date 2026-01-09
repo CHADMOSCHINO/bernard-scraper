@@ -43,32 +43,9 @@ function writeSettingsSafe(settings) {
     }
 }
 
-function normalizeNotionDatabaseId(raw) {
-    // Accept: UUID, 32-hex id, quoted values, and values with whitespace/newlines.
-    let trimmed = (raw ?? '').trim();
-    if ((trimmed.startsWith('"') && trimmed.endsWith('"')) || (trimmed.startsWith("'") && trimmed.endsWith("'"))) {
-        trimmed = trimmed.slice(1, -1).trim();
-    }
-    const cleaned = trimmed.replace(/[^0-9a-fA-F-]/g, '');
-    const hex = cleaned.replace(/-/g, '');
-    // Notion accepts UUIDs; allow 32-char IDs (no hyphens) too.
-    if (/^[0-9a-fA-F]{32}$/.test(hex)) {
-        return (
-            hex.slice(0, 8) + '-' +
-            hex.slice(8, 12) + '-' +
-            hex.slice(12, 16) + '-' +
-            hex.slice(16, 20) + '-' +
-            hex.slice(20)
-        ).toLowerCase();
-    }
-    return cleaned.trim();
-}
-
 function scraperEnv() {
     return {
         ...process.env,
-        NOTION_API_KEY: (process.env.NOTION_API_KEY ?? '').trim(),
-        NOTION_DATABASE_ID: normalizeNotionDatabaseId(process.env.NOTION_DATABASE_ID),
     };
 }
 

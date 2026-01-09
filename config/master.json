@@ -7,9 +7,7 @@
     ],
     "runSchedule": "daily",
     "maxLeadsPerCity": 100,
-    "outputDestination": "notion",
-    "notionDatabaseId": "YOUR_NOTION_DATABASE_ID",
-    "notionApiKey": "YOUR_NOTION_API_KEY",
+    "outputDestination": "database",
     "settings": {
         "delayBetweenRequests": 2000,
         "maxRetries": 3,
