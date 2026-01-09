@@ -9,6 +9,7 @@ import { spawn } from 'child_process';
 import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { getRuns, getLeadsForRun, getRecentLeads, initDB } from './db/db.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -225,6 +226,54 @@ app.get('/api/results/latest.csv', (req, res) => {
     }
 });
 
+// Get all runs
+app.get('/api/runs', async (req, res) => {
+    try {
+        const runs = await getRuns(50);
+        res.json({ runs });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get leads for a specific run
+app.get('/api/runs/:id/leads', async (req, res) => {
+    try {
+        const runId = parseInt(req.params.id);
+        const leads = await getLeadsForRun(runId);
+        res.json({ leads });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get all recent leads (across all runs)
+app.get('/api/leads', async (req, res) => {
+    try {
+        const limit = parseInt(req.query.limit) || 100;
+        const leads = await getRecentLeads(limit);
+        res.json({ leads });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Export leads as CSV
+app.get('/api/leads/export.csv', async (req, res) => {
+    try {
+        const leads = await getRecentLeads(1000);
+        const headers = 'Name,Phone,Email,Address,Website,Website Status,Source,City,State,Niche,Created At\n';
+        const rows = leads.map(l => 
+            `"${l.name || ''}","${l.phone || ''}","${l.email || ''}","${l.address || ''}","${l.website || ''}","${l.website_status || ''}","${l.source || ''}","${l.city || ''}","${l.state || ''}","${l.niche || ''}","${l.created_at || ''}"`
+        ).join('\n');
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename="bernard-leads.csv"');
+        res.send(headers + rows);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 function log(msg) {
     const entry = `[${new Date().toISOString()}] ${msg}`;
     logs.push(entry);
@@ -292,7 +341,7 @@ async function runAutoMode(days) {
     log('✅ Auto mode complete!');
 }
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
     console.log(`
 ╔════════════════════════════════════════════════════╗
 ║  🤖 Bernard API Server                             ║
@@ -305,8 +354,21 @@ app.listen(PORT, () => {
 ║  POST /api/scan/single - Run once                  ║
 ║  POST /api/scan/auto   - Run 5-day cycle           ║
 ║  POST /api/scan/stop   - Stop running              ║
-║  POST /api/clear       - Clear database            ║
 ║  GET  /api/status      - Check status              ║
+║  GET  /api/runs        - List all runs             ║
+║  GET  /api/leads       - Get all leads             ║
 ╚════════════════════════════════════════════════════╝
 `);
+
+    // Initialize database on startup
+    if (process.env.DATABASE_URL) {
+        try {
+            await initDB();
+        } catch (error) {
+            console.error('⚠️  Database initialization failed:', error.message);
+            console.log('   Server will continue, but database features will be unavailable.');
+        }
+    } else {
+        console.log('⚠️  No DATABASE_URL set - database features disabled');
+    }
 });

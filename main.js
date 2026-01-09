@@ -7,8 +7,8 @@
 import { readFileSync, existsSync, mkdirSync, writeFileSync } from 'fs';
 import path from 'path';
 import { chromium } from 'playwright';
-import { Client } from '@notionhq/client';
 import 'dotenv/config';
+import { createRun, updateRun, insertLeads } from './db/db.js';
 
 // Load config or use defaults
 const configPath = './config/settings.json';
@@ -24,25 +24,6 @@ if (existsSync(configPath)) {
     config = { ...config, ...JSON.parse(readFileSync(configPath, 'utf-8')) };
 }
 
-// Initialize Notion
-const notion = new Client({ auth: process.env.NOTION_API_KEY });
-function normalizeNotionDatabaseId(raw) {
-    const trimmed = (raw ?? '').trim();
-    // Notion accepts UUIDs; some people paste 32-char IDs without hyphens.
-    if (/^[0-9a-fA-F]{32}$/.test(trimmed)) {
-        return (
-            trimmed.slice(0, 8) + '-' +
-            trimmed.slice(8, 12) + '-' +
-            trimmed.slice(12, 16) + '-' +
-            trimmed.slice(16, 20) + '-' +
-            trimmed.slice(20)
-        ).toLowerCase();
-    }
-    return trimmed;
-}
-
-const databaseId = normalizeNotionDatabaseId(process.env.NOTION_DATABASE_ID);
-
 async function main() {
     console.log(`
 ╔════════════════════════════════════════════════════╗
@@ -54,8 +35,19 @@ async function main() {
 ╚════════════════════════════════════════════════════╝
 `);
 
+    // Create run record
+    let runId;
+    try {
+        runId = await createRun(config.city, config.state, config.niche, config.maxLeads);
+        console.log(`📝 Run #${runId} started\n`);
+    } catch (error) {
+        console.error('❌ Database connection failed:', error.message);
+        console.log('⚠️  Continuing without database (results will be saved to files only)\n');
+    }
+
     const browser = await chromium.launch({ headless: true });
     const allLeads = [];
+    let status = 'completed';
 
     try {
         // Scrape Google Maps
@@ -88,13 +80,30 @@ async function main() {
         // Save to output files (never lose leads)
         saveResultsToFiles(topLeads);
 
-        // Push to Notion
-        await pushToNotion(topLeads);
+        // Save to database
+        if (runId) {
+            try {
+                await insertLeads(runId, topLeads);
+                console.log(`💾 Saved ${topLeads.length} leads to database`);
+            } catch (error) {
+                console.error('⚠️  Database write failed:', error.message);
+            }
+        }
 
     } catch (error) {
         console.error('❌ Error:', error.message);
+        status = 'failed';
     } finally {
         await browser.close();
+        
+        // Update run status
+        if (runId) {
+            try {
+                await updateRun(runId, status, allLeads.length);
+            } catch (error) {
+                console.error('⚠️  Could not update run status:', error.message);
+            }
+        }
     }
 
     console.log('\n✅ Bernard complete!');
@@ -323,50 +332,6 @@ function deduplicateLeads(leads) {
     });
 }
 
-/**
- * Push leads to Notion with simple schema
- */
-async function pushToNotion(leads) {
-    console.log('📤 Pushing to Notion...\n');
-    let success = 0;
-
-    for (const lead of leads) {
-        try {
-            await notion.pages.create({
-                parent: { database_id: databaseId },
-                properties: {
-                    'Name': {
-                        title: [{ text: { content: lead.name } }],
-                    },
-                    'Phone': lead.phone ? { phone_number: lead.phone } : { phone_number: null },
-                    'city': {
-                        rich_text: [{ text: { content: config.city } }],
-                    },
-                    'Website Status': {
-                        select: { name: 'None' },
-                    },
-                    'hotness': {
-                        select: { name: 'Premium' }, // No website = Premium opportunity
-                    },
-                    'Score': { number: 90 },
-                    'Reason Scraped': {
-                        rich_text: [{ text: { content: '❌ No website found - needs online presence' } }],
-                    },
-                    'Status': { select: { name: 'New' } },
-                },
-            });
-
-            success++;
-            console.log(`  ✓ ${lead.name} (${lead.source})`);
-            if (lead.phone) console.log(`    📞 ${lead.phone}`);
-
-        } catch (error) {
-            console.log(`  ✗ ${lead.name}: ${error.message}`);
-        }
-    }
-
-    console.log(`\n✅ Added ${success}/${leads.length} leads to Notion`);
-}
 
 /**
  * Save results to JSON and CSV files
