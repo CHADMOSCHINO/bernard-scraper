@@ -13,6 +13,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3001;
+const NODE_BIN = process.execPath;
 
 const SETTINGS_PATH = path.join(__dirname, 'config', 'settings.json');
 const DEFAULT_SETTINGS = {
@@ -83,17 +84,22 @@ app.post('/api/scan/single', (req, res) => {
         return res.status(400).json({ error: 'Already running' });
     }
 
-    // Update config if provided
-    if (req.body?.city || req.body?.niche || req.body?.maxLeads) {
-        const config = readSettingsSafe();
-        if (req.body.city) config.city = req.body.city;
-        if (req.body.niche) config.niche = req.body.niche;
-        if (req.body.maxLeads) config.maxLeads = req.body.maxLeads;
-        writeSettingsSafe(config);
-    }
+    try {
+        // Update config if provided
+        if (req.body?.city || req.body?.niche || req.body?.maxLeads) {
+            const config = readSettingsSafe();
+            if (req.body.city) config.city = req.body.city;
+            if (req.body.niche) config.niche = req.body.niche;
+            if (req.body.maxLeads) config.maxLeads = req.body.maxLeads;
+            writeSettingsSafe(config);
+        }
 
-    runScraper();
-    res.json({ success: true, message: 'Scraper started' });
+        runScraper();
+        res.json({ success: true, message: 'Scraper started' });
+    } catch (error) {
+        console.error('Scan single failed:', error);
+        res.status(500).json({ error: error?.message ?? String(error) });
+    }
 });
 
 // Run 5-day auto
@@ -102,17 +108,22 @@ app.post('/api/scan/auto', (req, res) => {
         return res.status(400).json({ error: 'Already running' });
     }
 
-    // Update config
-    if (req.body?.city || req.body?.niche || req.body?.maxLeads) {
-        const config = readSettingsSafe();
-        if (req.body.city) config.city = req.body.city;
-        if (req.body.niche) config.niche = req.body.niche;
-        if (req.body.maxLeads) config.maxLeads = req.body.maxLeads;
-        writeSettingsSafe(config);
-    }
+    try {
+        // Update config
+        if (req.body?.city || req.body?.niche || req.body?.maxLeads) {
+            const config = readSettingsSafe();
+            if (req.body.city) config.city = req.body.city;
+            if (req.body.niche) config.niche = req.body.niche;
+            if (req.body.maxLeads) config.maxLeads = req.body.maxLeads;
+            writeSettingsSafe(config);
+        }
 
-    runAutoMode(req.body.days || 5);
-    res.json({ success: true, message: '5-day auto mode started' });
+        runAutoMode(req.body.days || 5);
+        res.json({ success: true, message: '5-day auto mode started' });
+    } catch (error) {
+        console.error('Scan auto failed:', error);
+        res.status(500).json({ error: error?.message ?? String(error) });
+    }
 });
 
 // Stop
@@ -129,7 +140,7 @@ app.post('/api/scan/stop', (req, res) => {
 // Clear database
 app.post('/api/clear', (req, res) => {
     log('🗑️ Clearing database...');
-    const proc = spawn('node', ['clear-database.js'], { cwd: __dirname });
+    const proc = spawn(NODE_BIN, ['clear-database.js'], { cwd: __dirname });
     proc.on('close', () => log('✅ Database cleared'));
     res.json({ success: true });
 });
@@ -140,34 +151,44 @@ app.get('/api/logs', (req, res) => {
 });
 
 function log(msg) {
-    const entry = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    const entry = `[${new Date().toISOString()}] ${msg}`;
     logs.push(entry);
     console.log(entry);
 }
 
 function runScraper() {
-    isRunning = true;
-    logs = [];
-    log('🤖 Starting Bernard...');
+    try {
+        isRunning = true;
+        logs = [];
+        log('🤖 Starting Bernard...');
 
-    currentProcess = spawn('node', ['main.js'], {
-        cwd: __dirname,
-        env: { ...process.env },
-    });
+        // Use the current Node binary to avoid PATH issues in PaaS environments
+        currentProcess = spawn(NODE_BIN, ['main.js'], {
+            cwd: __dirname,
+            env: { ...process.env },
+        });
 
-    currentProcess.stdout.on('data', data => {
-        data.toString().split('\n').filter(l => l.trim()).forEach(line => log(line));
-    });
+        currentProcess.stdout.on('data', data => {
+            data.toString().split('\n').filter(l => l.trim()).forEach(line => log(line));
+        });
 
-    currentProcess.stderr.on('data', data => {
-        log(`⚠️ ${data.toString()}`);
-    });
+        currentProcess.stderr.on('data', data => {
+            log(`⚠️ ${data.toString()}`);
+        });
 
-    currentProcess.on('close', code => {
+        currentProcess.on('close', code => {
+            isRunning = false;
+            currentProcess = null;
+            log(code === 0 ? '✅ Complete!' : `❌ Exited with code ${code}`);
+        });
+    } catch (error) {
         isRunning = false;
         currentProcess = null;
-        log(code === 0 ? '✅ Complete!' : `❌ Exited with code ${code}`);
-    });
+        console.error('Failed to start scraper:', error);
+        logs = [];
+        log(`❌ Failed to start scraper: ${error?.message ?? String(error)}`);
+        throw error;
+    }
 }
 
 async function runAutoMode(days) {
@@ -181,7 +202,7 @@ async function runAutoMode(days) {
         log(`\n📅 Day ${day}/${days}`);
 
         await new Promise(resolve => {
-            currentProcess = spawn('node', ['main.js'], { cwd: __dirname, env: { ...process.env } });
+            currentProcess = spawn(NODE_BIN, ['main.js'], { cwd: __dirname, env: { ...process.env } });
             currentProcess.stdout.on('data', d => d.toString().split('\n').filter(l => l.trim()).forEach(l => log(l)));
             currentProcess.on('close', resolve);
         });
