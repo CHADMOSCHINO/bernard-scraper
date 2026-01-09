@@ -42,6 +42,29 @@ function writeSettingsSafe(settings) {
     }
 }
 
+function normalizeNotionDatabaseId(raw) {
+    const trimmed = (raw ?? '').trim();
+    // Notion accepts UUIDs; allow 32-char IDs (no hyphens) too.
+    if (/^[0-9a-fA-F]{32}$/.test(trimmed)) {
+        return (
+            trimmed.slice(0, 8) + '-' +
+            trimmed.slice(8, 12) + '-' +
+            trimmed.slice(12, 16) + '-' +
+            trimmed.slice(16, 20) + '-' +
+            trimmed.slice(20)
+        ).toLowerCase();
+    }
+    return trimmed;
+}
+
+function scraperEnv() {
+    return {
+        ...process.env,
+        NOTION_API_KEY: (process.env.NOTION_API_KEY ?? '').trim(),
+        NOTION_DATABASE_ID: normalizeNotionDatabaseId(process.env.NOTION_DATABASE_ID),
+    };
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -165,7 +188,7 @@ function runScraper() {
         // Use the current Node binary to avoid PATH issues in PaaS environments
         currentProcess = spawn(NODE_BIN, ['main.js'], {
             cwd: __dirname,
-            env: { ...process.env },
+            env: scraperEnv(),
         });
 
         currentProcess.stdout.on('data', data => {
@@ -202,7 +225,7 @@ async function runAutoMode(days) {
         log(`\n📅 Day ${day}/${days}`);
 
         await new Promise(resolve => {
-            currentProcess = spawn(NODE_BIN, ['main.js'], { cwd: __dirname, env: { ...process.env } });
+            currentProcess = spawn(NODE_BIN, ['main.js'], { cwd: __dirname, env: scraperEnv() });
             currentProcess.stdout.on('data', d => d.toString().split('\n').filter(l => l.trim()).forEach(l => log(l)));
             currentProcess.on('close', resolve);
         });
