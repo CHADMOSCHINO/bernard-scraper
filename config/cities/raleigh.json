@@ -1,0 +1,39 @@
+{
+    "cityName": "Raleigh",
+    "state": "North Carolina",
+    "stateCode": "NC",
+    "country": "USA",
+    "coordinates": {
+        "latitude": 35.7796,
+        "longitude": -78.6382
+    },
+    "searchRadius": "25 miles",
+    "neighborhoods": [
+        "Downtown",
+        "North Hills",
+        "Cary",
+        "Apex",
+        "Wake Forest",
+        "Morrisville",
+        "Holly Springs"
+    ],
+    "dataSources": {
+        "primary": [
+            "google_maps",
+            "yelp"
+        ],
+        "supplemental": [
+            "better_business_bureau"
+        ]
+    },
+    "localBusinessRegistry": {
+        "url": "https://www.sosnc.gov/online_services/search",
+        "type": "secretary_of_state"
+    },
+    "demographics": {
+        "population": 467000,
+        "medianIncome": 63891,
+        "techSavvy": "high"
+    },
+    "notes": "Research Triangle tech hub, lots of startups and professional services"
+}

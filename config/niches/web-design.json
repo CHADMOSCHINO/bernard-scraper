@@ -1,0 +1,75 @@
+{
+    "nicheName": "Web Design",
+    "targetIndustries": [
+        "restaurants",
+        "gyms",
+        "salons",
+        "contractors",
+        "retail stores",
+        "law firms",
+        "dentists",
+        "chiropractors",
+        "auto repair",
+        "plumbers"
+    ],
+    "searchKeywords": [
+        "{industry} in {city}",
+        "local {industry} {city}",
+        "best {industry} near {city}",
+        "{industry} {city} {state}"
+    ],
+    "signals": {
+        "primary": [
+            "no_website",
+            "broken_website",
+            "placeholder_site"
+        ],
+        "secondary": [
+            "active_social",
+            "recent_reviews",
+            "high_rating"
+        ]
+    },
+    "scoringRules": {
+        "premium": {
+            "no_website": true,
+            "review_count_min": 50,
+            "active_social": true,
+            "review_recency_days": 30
+        },
+        "hot": {
+            "broken_website": true,
+            "review_count_min": 20,
+            "active_social": true,
+            "review_recency_days": 90
+        },
+        "warm": {
+            "placeholder_site": true,
+            "review_count_min": 10,
+            "social_presence": true
+        },
+        "cool": {
+            "review_count_min": 5,
+            "low_engagement": true
+        }
+    },
+    "websiteChecks": {
+        "checkSSL": true,
+        "checkMobile": true,
+        "checkSpeed": true,
+        "detectPlaceholder": true,
+        "detectBroken": true
+    },
+    "dataSources": [
+        "google_maps",
+        "yelp",
+        "facebook"
+    ],
+    "enrichmentFields": [
+        "email",
+        "phone",
+        "owner_name",
+        "tech_stack"
+    ],
+    "outreachAngle": "Outdated or missing website is hurting your business visibility"
+}

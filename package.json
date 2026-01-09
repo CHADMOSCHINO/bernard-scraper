@@ -1,0 +1,36 @@
+{
+    "name": "bernard-scraper",
+    "version": "1.0.0",
+    "description": "Autonomous lead generation system - scrapes, validates, and triages local SMB prospects",
+    "main": "main.js",
+    "type": "module",
+    "scripts": {
+        "start": "node main.js",
+        "server": "node server.js",
+        "scrape": "node main.js --run",
+        "scrape:city": "node main.js --city",
+        "test": "node --test",
+        "test-notion": "node test-notion.js",
+        "test-all": "node test-all-configs.js"
+    },
+    "keywords": [
+        "lead-generation",
+        "scraping",
+        "automation",
+        "smb"
+    ],
+    "author": "Bernard AI",
+    "license": "MIT",
+    "dependencies": {
+        "@notionhq/client": "^2.2.0",
+        "axios": "^1.6.0",
+        "cheerio": "^1.0.0-rc.12",
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.0",
+        "express": "^5.2.1",
+        "playwright": "^1.40.0"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0"
+    }
+}

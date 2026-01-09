@@ -1,0 +1,193 @@
+/**
+ * Bernard API Server - Simplified
+ * Handles scraper configuration and execution
+ */
+
+import express from 'express';
+import cors from 'cors';
+import { spawn } from 'child_process';
+import { readFileSync, writeFileSync } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const app = express();
+const PORT = process.env.PORT || 3001;
+
+app.use(cors());
+app.use(express.json());
+
+// State
+let isRunning = false;
+let logs = [];
+let currentProcess = null;
+
+// Get current config
+app.get('/api/config', (req, res) => {
+    try {
+        const config = JSON.parse(readFileSync('./config/settings.json', 'utf-8'));
+        res.json(config);
+    } catch {
+        res.json({
+            city: 'Raleigh',
+            state: 'NC',
+            niche: 'restaurants',
+            maxLeads: 10,
+            sources: ['google_maps', 'yelp'],
+        });
+    }
+});
+
+// Update config
+app.post('/api/config', (req, res) => {
+    try {
+        const config = req.body;
+        writeFileSync('./config/settings.json', JSON.stringify(config, null, 2));
+        log(`⚙️ Config updated: ${config.city}, ${config.niche}, max ${config.maxLeads}`);
+        res.json({ success: true });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get status
+app.get('/api/status', (req, res) => {
+    res.json({ isRunning, logs: logs.slice(-30) });
+});
+
+// Run single scan
+app.post('/api/scan/single', (req, res) => {
+    if (isRunning) {
+        return res.status(400).json({ error: 'Already running' });
+    }
+
+    // Update config if provided
+    if (req.body.city || req.body.niche) {
+        const config = JSON.parse(readFileSync('./config/settings.json', 'utf-8'));
+        if (req.body.city) config.city = req.body.city;
+        if (req.body.niche) config.niche = req.body.niche;
+        if (req.body.maxLeads) config.maxLeads = req.body.maxLeads;
+        writeFileSync('./config/settings.json', JSON.stringify(config, null, 2));
+    }
+
+    runScraper();
+    res.json({ success: true, message: 'Scraper started' });
+});
+
+// Run 5-day auto
+app.post('/api/scan/auto', (req, res) => {
+    if (isRunning) {
+        return res.status(400).json({ error: 'Already running' });
+    }
+
+    // Update config
+    if (req.body.city || req.body.niche) {
+        const config = JSON.parse(readFileSync('./config/settings.json', 'utf-8'));
+        if (req.body.city) config.city = req.body.city;
+        if (req.body.niche) config.niche = req.body.niche;
+        writeFileSync('./config/settings.json', JSON.stringify(config, null, 2));
+    }
+
+    runAutoMode(req.body.days || 5);
+    res.json({ success: true, message: '5-day auto mode started' });
+});
+
+// Stop
+app.post('/api/scan/stop', (req, res) => {
+    if (currentProcess) {
+        currentProcess.kill();
+        currentProcess = null;
+    }
+    isRunning = false;
+    log('⏹️ Stopped');
+    res.json({ success: true });
+});
+
+// Clear database
+app.post('/api/clear', (req, res) => {
+    log('🗑️ Clearing database...');
+    const proc = spawn('node', ['clear-database.js'], { cwd: __dirname });
+    proc.on('close', () => log('✅ Database cleared'));
+    res.json({ success: true });
+});
+
+// Get logs
+app.get('/api/logs', (req, res) => {
+    res.json({ logs: logs.slice(-50) });
+});
+
+function log(msg) {
+    const entry = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    logs.push(entry);
+    console.log(entry);
+}
+
+function runScraper() {
+    isRunning = true;
+    logs = [];
+    log('🤖 Starting Bernard...');
+
+    currentProcess = spawn('node', ['main.js'], {
+        cwd: __dirname,
+        env: { ...process.env },
+    });
+
+    currentProcess.stdout.on('data', data => {
+        data.toString().split('\n').filter(l => l.trim()).forEach(line => log(line));
+    });
+
+    currentProcess.stderr.on('data', data => {
+        log(`⚠️ ${data.toString()}`);
+    });
+
+    currentProcess.on('close', code => {
+        isRunning = false;
+        currentProcess = null;
+        log(code === 0 ? '✅ Complete!' : `❌ Exited with code ${code}`);
+    });
+}
+
+async function runAutoMode(days) {
+    isRunning = true;
+    logs = [];
+    log(`🔄 Starting ${days}-day auto mode...`);
+
+    for (let day = 1; day <= days; day++) {
+        if (!isRunning) break;
+
+        log(`\n📅 Day ${day}/${days}`);
+
+        await new Promise(resolve => {
+            currentProcess = spawn('node', ['main.js'], { cwd: __dirname, env: { ...process.env } });
+            currentProcess.stdout.on('data', d => d.toString().split('\n').filter(l => l.trim()).forEach(l => log(l)));
+            currentProcess.on('close', resolve);
+        });
+
+        if (day < days && isRunning) {
+            log(`⏳ Waiting for next cycle... (demo: 10s)`);
+            await new Promise(r => setTimeout(r, 10000));
+        }
+    }
+
+    isRunning = false;
+    log('✅ Auto mode complete!');
+}
+
+app.listen(PORT, () => {
+    console.log(`
+╔════════════════════════════════════════════════════╗
+║  🤖 Bernard API Server                             ║
+║                                                    ║
+║  URL: http://localhost:${PORT}                       ║
+║                                                    ║
+║  Endpoints:                                        ║
+║  GET  /api/config  - Get current config            ║
+║  POST /api/config  - Update config                 ║
+║  POST /api/scan/single - Run once                  ║
+║  POST /api/scan/auto   - Run 5-day cycle           ║
+║  POST /api/scan/stop   - Stop running              ║
+║  POST /api/clear       - Clear database            ║
+║  GET  /api/status      - Check status              ║
+╚════════════════════════════════════════════════════╝
+`);
+});

@@ -1,0 +1,70 @@
+{
+    "nicheName": "Payment Processors",
+    "targetIndustries": [
+        "restaurants",
+        "retail stores",
+        "food trucks",
+        "market vendors",
+        "service businesses",
+        "salons",
+        "spas"
+    ],
+    "searchKeywords": [
+        "{industry} accepting payments {city}",
+        "{industry} {city}",
+        "local {industry} {city}",
+        "{industry} near {city}"
+    ],
+    "signals": {
+        "primary": [
+            "cash_only",
+            "outdated_payment_system",
+            "high_transaction_volume"
+        ],
+        "secondary": [
+            "international_customers",
+            "ecommerce_potential",
+            "high_foot_traffic"
+        ]
+    },
+    "scoringRules": {
+        "premium": {
+            "cash_only": true,
+            "review_count_min": 100,
+            "high_volume": true,
+            "tourist_area": true
+        },
+        "hot": {
+            "outdated_payment_system": true,
+            "review_count_min": 50,
+            "multiple_locations": true
+        },
+        "warm": {
+            "limited_payment_options": true,
+            "review_count_min": 25,
+            "growing_business": true
+        },
+        "cool": {
+            "review_count_min": 10,
+            "single_location": true
+        }
+    },
+    "dataSources": [
+        "google_maps",
+        "yelp",
+        "tripadvisor"
+    ],
+    "enrichmentFields": [
+        "email",
+        "phone",
+        "decision_maker",
+        "current_processor",
+        "monthly_revenue_estimate"
+    ],
+    "outreachAngle": "Lower fees + faster payments + international support",
+    "geographicFocus": {
+        "prioritizeInternational": true,
+        "targetTouristAreas": true,
+        "crossBorderOpportunities": true
+    }
+}

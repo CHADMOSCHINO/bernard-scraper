@@ -1,0 +1,46 @@
+{
+    "cityName": "Kingston",
+    "state": null,
+    "country": "Jamaica",
+    "coordinates": {
+        "latitude": 17.9714,
+        "longitude": -76.7931
+    },
+    "searchRadius": "15 kilometers",
+    "neighborhoods": [
+        "New Kingston",
+        "Half Way Tree",
+        "Liguanea",
+        "Portmore",
+        "Cross Roads",
+        "Constant Spring"
+    ],
+    "dataSources": {
+        "primary": [
+            "google_maps",
+            "facebook",
+            "instagram"
+        ],
+        "supplemental": [
+            "tripadvisor",
+            "jamaica_yellow_pages"
+        ]
+    },
+    "localBusinessRegistry": {
+        "url": "https://companiesoffice.gov.jm/",
+        "type": "companies_office"
+    },
+    "demographics": {
+        "population": 670000,
+        "medianIncome": 5000,
+        "currency": "JMD",
+        "techSavvy": "medium"
+    },
+    "specialConsiderations": {
+        "tourism": true,
+        "internationalPayments": true,
+        "mobileFirst": true,
+        "whatsappPreferred": true
+    },
+    "notes": "High tourism area, many cash-only businesses, strong payment processor opportunity"
+}
