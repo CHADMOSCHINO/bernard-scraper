@@ -25,7 +25,22 @@ if (existsSync(configPath)) {
 
 // Initialize Notion
 const notion = new Client({ auth: process.env.NOTION_API_KEY });
-const databaseId = process.env.NOTION_DATABASE_ID;
+function normalizeNotionDatabaseId(raw) {
+    const trimmed = (raw ?? '').trim();
+    // Notion accepts UUIDs; some people paste 32-char IDs without hyphens.
+    if (/^[0-9a-fA-F]{32}$/.test(trimmed)) {
+        return (
+            trimmed.slice(0, 8) + '-' +
+            trimmed.slice(8, 12) + '-' +
+            trimmed.slice(12, 16) + '-' +
+            trimmed.slice(16, 20) + '-' +
+            trimmed.slice(20)
+        ).toLowerCase();
+    }
+    return trimmed;
+}
+
+const databaseId = normalizeNotionDatabaseId(process.env.NOTION_DATABASE_ID);
 
 async function main() {
     console.log(`
