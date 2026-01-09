@@ -14,6 +14,33 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3001;
 
+const SETTINGS_PATH = path.join(__dirname, 'config', 'settings.json');
+const DEFAULT_SETTINGS = {
+    city: 'Raleigh',
+    state: 'NC',
+    niche: 'restaurants',
+    maxLeads: 10,
+    sources: ['google_maps', 'yelp'],
+};
+
+function readSettingsSafe() {
+    try {
+        return JSON.parse(readFileSync(SETTINGS_PATH, 'utf-8'));
+    } catch {
+        return { ...DEFAULT_SETTINGS };
+    }
+}
+
+function writeSettingsSafe(settings) {
+    try {
+        writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+        return true;
+    } catch (error) {
+        console.error('Failed to write settings.json:', error?.message ?? error);
+        return false;
+    }
+}
+
 app.use(cors());
 app.use(express.json());
 
@@ -25,24 +52,19 @@ let currentProcess = null;
 // Get current config
 app.get('/api/config', (req, res) => {
     try {
-        const config = JSON.parse(readFileSync('./config/settings.json', 'utf-8'));
-        res.json(config);
+        res.json(readSettingsSafe());
     } catch {
-        res.json({
-            city: 'Raleigh',
-            state: 'NC',
-            niche: 'restaurants',
-            maxLeads: 10,
-            sources: ['google_maps', 'yelp'],
-        });
+        res.json({ ...DEFAULT_SETTINGS });
     }
 });
 
 // Update config
 app.post('/api/config', (req, res) => {
     try {
-        const config = req.body;
-        writeFileSync('./config/settings.json', JSON.stringify(config, null, 2));
+        const config = { ...DEFAULT_SETTINGS, ...(req.body ?? {}) };
+        if (!writeSettingsSafe(config)) {
+            return res.status(500).json({ error: 'Failed to save config' });
+        }
         log(`⚙️ Config updated: ${config.city}, ${config.niche}, max ${config.maxLeads}`);
         res.json({ success: true });
     } catch (error) {
@@ -62,12 +84,12 @@ app.post('/api/scan/single', (req, res) => {
     }
 
     // Update config if provided
-    if (req.body.city || req.body.niche) {
-        const config = JSON.parse(readFileSync('./config/settings.json', 'utf-8'));
+    if (req.body?.city || req.body?.niche || req.body?.maxLeads) {
+        const config = readSettingsSafe();
         if (req.body.city) config.city = req.body.city;
         if (req.body.niche) config.niche = req.body.niche;
         if (req.body.maxLeads) config.maxLeads = req.body.maxLeads;
-        writeFileSync('./config/settings.json', JSON.stringify(config, null, 2));
+        writeSettingsSafe(config);
     }
 
     runScraper();
@@ -81,11 +103,12 @@ app.post('/api/scan/auto', (req, res) => {
     }
 
     // Update config
-    if (req.body.city || req.body.niche) {
-        const config = JSON.parse(readFileSync('./config/settings.json', 'utf-8'));
+    if (req.body?.city || req.body?.niche || req.body?.maxLeads) {
+        const config = readSettingsSafe();
         if (req.body.city) config.city = req.body.city;
         if (req.body.niche) config.niche = req.body.niche;
-        writeFileSync('./config/settings.json', JSON.stringify(config, null, 2));
+        if (req.body.maxLeads) config.maxLeads = req.body.maxLeads;
+        writeSettingsSafe(config);
     }
 
     runAutoMode(req.body.days || 5);
