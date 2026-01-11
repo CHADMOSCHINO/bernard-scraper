@@ -10,6 +10,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { getRuns, getLeadsForRun, getRecentLeads, getStats, initDB } from './db/db.js';
+import { parseIntent } from './utils/ai.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
@@ -118,7 +119,53 @@ app.get('/api/stats', async (req, res) => {
     }
 });
 
-// Run single scan
+// Run AI-powered scan
+app.post('/api/scan/ai', async (req, res) => {
+    if (isRunning) {
+        return res.status(400).json({ error: 'Already running' });
+    }
+
+    try {
+        const { prompt, contextLocation } = req.body;
+        log(`🧠 AI Analyzing: "${prompt}"...`);
+
+        // 1. Parse Intent with OpenAI
+        const intent = await parseIntent(prompt, contextLocation);
+
+        // 2. Validate & Sanitize
+        if (!intent.niche || !intent.city) {
+            throw new Error("Could not understand niche or city.");
+        }
+
+        // 3. Apply Config
+        const config = readSettingsSafe();
+        config.city = intent.city;
+        config.state = intent.state || config.state;
+        config.niche = intent.niche;
+        config.maxLeads = intent.maxLeads || config.maxLeads;
+        config.filters = intent.filters || {};
+
+        writeSettingsSafe(config);
+        log(`⚙️ AI Configured: ${config.niche} in ${config.city}, ${config.state}`);
+        if (config.filters) log(`   Filters: ${JSON.stringify(config.filters)}`);
+
+        // 4. Run
+        runScraper();
+
+        res.json({
+            success: true,
+            message: 'AI Scan Started',
+            interpreted: intent
+        });
+
+    } catch (error) {
+        console.error('AI Scan failed:', error);
+        log(`❌ AI Error: ${error.message}`);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Run single scan (Manual legacy)
 app.post('/api/scan/single', (req, res) => {
     if (isRunning) {
         return res.status(400).json({ error: 'Already running' });
@@ -126,12 +173,15 @@ app.post('/api/scan/single', (req, res) => {
 
     try {
         // Update config if provided
-        if (req.body?.city || req.body?.niche || req.body?.maxLeads) {
+        if (req.body?.city || req.body?.state || req.body?.niche || req.body?.maxLeads || req.body?.filters) {
             const config = readSettingsSafe();
             if (req.body.city) config.city = req.body.city;
+            if (req.body.state) config.state = req.body.state;
             if (req.body.niche) config.niche = req.body.niche;
             if (req.body.maxLeads) config.maxLeads = req.body.maxLeads;
+            if (req.body.filters) config.filters = req.body.filters;
             writeSettingsSafe(config);
+            log(`⚙️ Config: ${config.city}, ${config.state} - ${config.niche}`);
         }
 
         runScraper();
@@ -150,12 +200,14 @@ app.post('/api/scan/auto', (req, res) => {
 
     try {
         // Update config
-        if (req.body?.city || req.body?.niche || req.body?.maxLeads) {
+        if (req.body?.city || req.body?.state || req.body?.niche || req.body?.maxLeads) {
             const config = readSettingsSafe();
             if (req.body.city) config.city = req.body.city;
+            if (req.body.state) config.state = req.body.state;
             if (req.body.niche) config.niche = req.body.niche;
             if (req.body.maxLeads) config.maxLeads = req.body.maxLeads;
             writeSettingsSafe(config);
+            log(`⚙️ Auto Config: ${config.city}, ${config.state} - ${config.niche}`);
         }
 
         runAutoMode(req.body.days || 5);
@@ -249,9 +301,9 @@ app.get('/api/leads', async (req, res) => {
 app.get('/api/leads/export.csv', async (req, res) => {
     try {
         const leads = await getRecentLeads(1000);
-        const headers = 'Name,Phone,Email,Address,Website,Website Status,Source,City,State,Niche,Created At\n';
-        const rows = leads.map(l => 
-            `"${l.name || ''}","${l.phone || ''}","${l.email || ''}","${l.address || ''}","${l.website || ''}","${l.website_status || ''}","${l.source || ''}","${l.city || ''}","${l.state || ''}","${l.niche || ''}","${l.created_at || ''}"`
+        const headers = 'Name,Description,Phone,Email,Address,Website,Website Status,Source,City,State,Niche,Created At\n';
+        const rows = leads.map(l =>
+            `"${l.name || ''}","${l.description || ''}","${l.phone || ''}","${l.email || ''}","${l.address || ''}","${l.website || ''}","${l.website_status || ''}","${l.source || ''}","${l.city || ''}","${l.state || ''}","${l.niche || ''}","${l.created_at || ''}"`
         ).join('\n');
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
         res.setHeader('Content-Disposition', 'attachment; filename="bernard-leads.csv"');
@@ -319,8 +371,9 @@ async function runAutoMode(days) {
         });
 
         if (day < days && isRunning) {
-            log(`⏳ Waiting for next cycle... (demo: 10s)`);
-            await new Promise(r => setTimeout(r, 10000));
+            const delay = process.env.SCAN_INTERVAL_MS ? parseInt(process.env.SCAN_INTERVAL_MS) : 86400000; // Default 24h
+            log(`⏳ Cycle ${day} complete. Waiting ${Math.round(delay / 1000 / 60 / 60)} hours for next run...`);
+            await new Promise(r => setTimeout(r, delay));
         }
     }
 

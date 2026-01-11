@@ -60,6 +60,7 @@ export async function scrapeGoogleMaps(browser, queries, cityConfig) {
                         let reviewCount = null;
                         let address = null;
                         let phone = null;
+                        let description = null;
 
                         if (parent) {
                             // Look for rating (e.g., "4.5")
@@ -82,6 +83,38 @@ export async function scrapeGoogleMaps(browser, queries, cityConfig) {
                             // Look for phone
                             const phoneMatch = parent.innerText.match(/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
                             if (phoneMatch) phone = phoneMatch[0];
+
+                            // Extract description/category - typically the first text line after the name
+                            // Google Maps shows categories like "Italian restaurant", "Dentist", "Auto repair shop"
+                            // These are usually short descriptors
+                            const allText = parent.innerText;
+                            const textLines = allText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+
+                            // Find potential category/description lines
+                            // Skip lines that are: the name, rating info, address, phone, price indicators
+                            for (const line of textLines) {
+                                // Skip if it's the business name
+                                if (line === name) continue;
+                                // Skip rating lines (contain star numbers)
+                                if (/^\d\.\d/.test(line) || /^\(\d/.test(line)) continue;
+                                // Skip if it looks like an address
+                                if (/\d+\s+\w+\s+(St|Ave|Rd|Dr|Blvd|Way|Ln)/i.test(line)) continue;
+                                // Skip phone numbers
+                                if (/\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/.test(line)) continue;
+                                // Skip price indicators
+                                if (/^\$+$/.test(line) || /^Price:/.test(line)) continue;
+                                // Skip very short lines and "Open" status
+                                if (line.length < 3 || /^(Open|Closed|Opens|Closes)/i.test(line)) continue;
+                                // Skip website URLs
+                                if (/^(www\.|http)/.test(line)) continue;
+
+                                // This is likely the category/description
+                                // Categories are usually short (under 50 chars) and descriptive
+                                if (line.length < 60 && !line.includes('·')) {
+                                    description = line;
+                                    break;
+                                }
+                            }
                         }
 
                         businesses.push({
@@ -90,6 +123,7 @@ export async function scrapeGoogleMaps(browser, queries, cityConfig) {
                             reviewCount,
                             address,
                             phone,
+                            description,
                         });
                     });
 
@@ -112,10 +146,11 @@ export async function scrapeGoogleMaps(browser, queries, cityConfig) {
                             rating: biz.rating,
                             reviewCount: biz.reviewCount || 0,
                             website: '', // Will be enriched later or marked as "no website"
+                            description: biz.description || '',
                             source: 'google_maps',
                             scrapedAt: new Date().toISOString(),
                         });
-                        console.log(`    ✓ ${biz.name}`);
+                        console.log(`    ✓ ${biz.name}${biz.description ? ` (${biz.description})` : ''}`);
                     }
                 }
 

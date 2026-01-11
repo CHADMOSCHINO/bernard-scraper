@@ -10,8 +10,8 @@ export function getPool() {
     if (!pool) {
         pool = new Pool({
             connectionString: process.env.DATABASE_URL,
-            ssl: process.env.DATABASE_URL?.includes('render.com') 
-                ? { rejectUnauthorized: false } 
+            ssl: process.env.DATABASE_URL?.includes('render.com')
+                ? { rejectUnauthorized: false }
                 : false,
         });
     }
@@ -39,16 +39,16 @@ export async function updateRun(runId, status, totalLeads, logs = null) {
     const db = getPool();
     const updates = ['status = $2', 'total_leads = $3'];
     const params = [runId, status, totalLeads];
-    
+
     if (status === 'completed' || status === 'failed') {
         updates.push('finished_at = NOW()');
     }
-    
+
     if (logs !== null) {
         updates.push(`logs = $${params.length + 1}`);
         params.push(logs);
     }
-    
+
     await db.query(
         `UPDATE runs SET ${updates.join(', ')} WHERE id = $1`,
         params
@@ -60,11 +60,11 @@ export async function updateRun(runId, status, totalLeads, logs = null) {
  */
 export async function insertLeads(runId, leads) {
     const db = getPool();
-    
+
     for (const lead of leads) {
         await db.query(
-            `INSERT INTO leads (run_id, name, phone, email, address, website, website_status, source, created_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())`,
+            `INSERT INTO leads (run_id, name, phone, email, address, website, website_status, source, description, created_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())`,
             [
                 runId,
                 lead.name || 'Unknown',
@@ -73,7 +73,8 @@ export async function insertLeads(runId, leads) {
                 lead.address || null,
                 lead.website || null,
                 lead.websiteStatus?.status || 'none',
-                lead.source || 'Google Maps'
+                lead.source || 'Google Maps',
+                lead.description || null
             ]
         );
     }
@@ -100,7 +101,7 @@ export async function getRuns(limit = 50) {
 export async function getLeadsForRun(runId) {
     const db = getPool();
     const result = await db.query(
-        `SELECT id, name, phone, email, address, website, website_status, source, created_at
+        `SELECT id, name, phone, email, address, website, website_status, source, description, created_at
          FROM leads
          WHERE run_id = $1
          ORDER BY created_at DESC`,
@@ -115,7 +116,7 @@ export async function getLeadsForRun(runId) {
 export async function getRecentLeads(limit = 100) {
     const db = getPool();
     const result = await db.query(
-        `SELECT l.id, l.name, l.phone, l.email, l.address, l.website, l.website_status, l.source, l.created_at,
+        `SELECT l.id, l.name, l.phone, l.email, l.address, l.website, l.website_status, l.source, l.description, l.created_at,
                 r.city, r.state, r.niche
          FROM leads l
          JOIN runs r ON l.run_id = r.id
@@ -154,7 +155,7 @@ export async function getStats() {
  */
 export async function initDB() {
     const db = getPool();
-    
+
     // Create tables if they don't exist
     await db.query(`
         CREATE TABLE IF NOT EXISTS runs (
@@ -170,7 +171,7 @@ export async function initDB() {
             logs TEXT
         )
     `);
-    
+
     await db.query(`
         CREATE TABLE IF NOT EXISTS leads (
             id SERIAL PRIMARY KEY,
@@ -182,10 +183,24 @@ export async function initDB() {
             website VARCHAR(500),
             website_status VARCHAR(50),
             source VARCHAR(50),
+            description TEXT,
             created_at TIMESTAMPTZ DEFAULT NOW()
         )
     `);
-    
+
+    // Add description column if it doesn't exist (for existing databases)
+    await db.query(`
+        DO $$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'leads' AND column_name = 'description'
+            ) THEN
+                ALTER TABLE leads ADD COLUMN description TEXT;
+            END IF;
+        END $$;
+    `);
+
     // Create indexes
     await db.query(`
         CREATE INDEX IF NOT EXISTS idx_runs_started_at ON runs(started_at DESC)
@@ -196,6 +211,6 @@ export async function initDB() {
     await db.query(`
         CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at DESC)
     `);
-    
+
     console.log('✅ Database initialized');
 }
