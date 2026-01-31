@@ -1,5 +1,5 @@
 /**
- * Bernard API Server - Simplified
+ * Chauncey API Server - Simplified
  * Handles scraper configuration and execution
  */
 
@@ -59,7 +59,7 @@ app.get('/', (req, res) => {
         .type('text/plain; charset=utf-8')
         .send(
             [
-                'Bernard Scraper API is running.',
+                'Chauncey Scraper API is running.',
                 '',
                 'Try:',
                 '  GET  /api/status',
@@ -250,11 +250,11 @@ app.get('/api/leads/export.csv', async (req, res) => {
     try {
         const leads = await getRecentLeads(1000);
         const headers = 'Name,Phone,Email,Address,Website,Website Status,Source,City,State,Niche,Created At\n';
-        const rows = leads.map(l => 
+        const rows = leads.map(l =>
             `"${l.name || ''}","${l.phone || ''}","${l.email || ''}","${l.address || ''}","${l.website || ''}","${l.website_status || ''}","${l.source || ''}","${l.city || ''}","${l.state || ''}","${l.niche || ''}","${l.created_at || ''}"`
         ).join('\n');
         res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-        res.setHeader('Content-Disposition', 'attachment; filename="bernard-leads.csv"');
+        res.setHeader('Content-Disposition', 'attachment; filename="chauncey-leads.csv"');
         res.send(headers + rows);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -271,7 +271,7 @@ function runScraper() {
     try {
         isRunning = true;
         logs = [];
-        log('🤖 Starting Bernard...');
+        log('🤖 Starting Chauncey...');
 
         // Use the current Node binary to avoid PATH issues in PaaS environments
         currentProcess = spawn(NODE_BIN, ['main.js'], {
@@ -331,7 +331,7 @@ async function runAutoMode(days) {
 app.listen(PORT, async () => {
     console.log(`
 ╔════════════════════════════════════════════════════╗
-║  🤖 Bernard API Server                             ║
+║  🤖 Chauncey API Server                            ║
 ║                                                    ║
 ║  URL: http://localhost:${PORT}                       ║
 ║                                                    ║

@@ -10,6 +10,7 @@ import { BernardDock } from '@/components/dashboard/BernardDock';
 import { Plus, X, Sparkles, Phone, ExternalLink, Key, TrendingUp, Zap, Activity, Clock, Download, Rocket } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LiveFeed } from '@/components/dashboard/LiveFeed';
+import { Outreach } from '@/pages/Outreach';
 import * as api from '@/lib/api';
 
 // Types
@@ -57,7 +58,7 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    const hasSeenWelcome = localStorage.getItem('bernard_welcome_seen');
+    const hasSeenWelcome = localStorage.getItem('chauncey_welcome_seen');
     if (!hasSeenWelcome) {
       setShowWelcome(true);
     }
@@ -65,7 +66,7 @@ export function Dashboard() {
 
   const handleCloseWelcome = () => {
     setShowWelcome(false);
-    localStorage.setItem('bernard_welcome_seen', 'true');
+    localStorage.setItem('chauncey_welcome_seen', 'true');
   };
 
   // Format numbers for display
@@ -130,7 +131,9 @@ export function Dashboard() {
         {/* Main Content - Tight Bento Grid */}
         <div className="flex-1 overflow-y-auto custom-scrollbar p-2 lg:p-4 pb-32 bg-transparent">
 
-          {currentView ? (
+          {currentView === 'outreach' ? (
+            <Outreach />
+          ) : currentView ? (
             <ScraperView platform={currentView} />
           ) : (
             <div className="grid grid-cols-12 gap-2 lg:gap-3 w-full items-stretch">
@@ -332,11 +335,11 @@ export function Dashboard() {
               <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl flex items-center justify-center glow-blue">
-                    <span className="text-xl font-black text-white">B</span>
+                    <span className="text-xl font-black text-white">C</span>
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold text-white">Welcome to Bernard.ai</h2>
-                    <p className="text-xs text-cyan-400 font-medium">#1 Lead Scraper</p>
+                    <h2 className="text-xl font-bold text-white">Welcome to Chauncey</h2>
+                    <p className="text-xs text-cyan-400 font-medium">#1 Lead Scraper & CRM</p>
                   </div>
                 </div>
 

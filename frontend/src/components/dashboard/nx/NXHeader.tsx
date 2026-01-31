@@ -71,7 +71,7 @@ export function NXHeader({ onMenuToggle }: NXHeaderProps) {
                     <div className="relative">
                         <Search className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2 group-focus-within:text-cyan-400 transition-colors z-10" />
                         <input
-                            placeholder="Ask Bernard to find leads..."
+                            placeholder="Ask Chauncey to find leads..."
                             value={search}
                             onChange={e => setSearch(e.target.value)}
                             onKeyDown={handleSearch}
@@ -140,7 +140,7 @@ export function NXHeader({ onMenuToggle }: NXHeaderProps) {
                                                 </div>
                                                 <div className="p-2.5 hover:bg-white/5 rounded-xl cursor-pointer transition-colors border border-transparent hover:border-white/5">
                                                     <div className="text-xs font-bold text-white mb-0.5">System Update</div>
-                                                    <div className="text-[10px] text-slate-500">Bernard v2.5 is now active on all clusters.</div>
+                                                    <div className="text-[10px] text-slate-500">Chauncey v2.5 is now active on all clusters.</div>
                                                     <div className="text-[8px] text-slate-700 mt-1 uppercase font-bold tracking-tighter">1 hour ago</div>
                                                 </div>
                                             </>

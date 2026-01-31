@@ -69,9 +69,9 @@ export function Sidebar({ onSelectView }: SidebarProps) {
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 relative flex items-center justify-center">
                         <div className="absolute inset-0 bg-blue-500/20 rounded-full blur-md animate-pulse" />
-                        <img src="/logo.png" alt="Bernard" className="w-full h-full object-contain relative z-10" />
+                        <img src="/src/assets/chauncey_logo.png" alt="Chauncey" className="w-full h-full object-contain relative z-10" />
                     </div>
-                    <span className="text-xl font-bold text-white tracking-tight">Bernard</span>
+                    <span className="text-xl font-bold text-white tracking-tight">Chauncey</span>
                 </div>
 
                 {/* Mobile Close Button */}
@@ -93,6 +93,13 @@ export function Sidebar({ onSelectView }: SidebarProps) {
                     >
                         <LayoutDashboard className="w-5 h-5" />
                         Dashboard
+                    </button>
+                    <button
+                        onClick={() => onSelectView('outreach')}
+                        className="flex items-center gap-3 w-full px-4 py-3 text-slate-400 hover:text-white hover:bg-white/5 rounded-xl text-sm font-bold transition-all mt-1"
+                    >
+                        <Mail className="w-5 h-5" />
+                        Outreach CRM
                     </button>
                 </div>
 

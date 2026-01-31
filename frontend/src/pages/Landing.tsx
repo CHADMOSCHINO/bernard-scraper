@@ -20,9 +20,9 @@ export function Landing() {
             <nav className="relative z-50 w-full max-w-7xl mx-auto px-6 py-6 flex justify-between items-center">
                 <div className="flex items-center gap-3">
                     <div className="w-10 h-10 flex items-center justify-center">
-                        <img src="/logo.png" alt="Bernard" className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]" />
+                        <img src="/src/assets/chauncey_logo.png" alt="Chauncey" className="w-full h-full object-contain drop-shadow-[0_0_10px_rgba(34,211,238,0.3)]" />
                     </div>
-                    <span className="text-xl font-bold tracking-tight">Bernard</span>
+                    <span className="text-xl font-bold tracking-tight">Chauncey</span>
                 </div>
 
                 <div className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-400">
@@ -33,14 +33,14 @@ export function Landing() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/dashboard')} className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
+                    <button onClick={() => navigate('/login')} className="text-sm font-medium text-slate-300 hover:text-white transition-colors">
                         Sign In
                     </button>
                     <button
-                        onClick={() => navigate('/dashboard')}
+                        onClick={() => navigate('/login')}
                         className="px-5 py-2.5 rounded-full bg-white text-slate-950 text-sm font-bold hover:bg-slate-200 transition-colors shadow-lg shadow-white/5"
                     >
-                        Access Bernard
+                        Access Chauncey
                     </button>
                 </div>
             </nav>
@@ -72,7 +72,7 @@ export function Landing() {
 
                     <div className="flex flex-col sm:flex-row gap-4">
                         <button
-                            onClick={() => navigate('/dashboard')}
+                            onClick={() => navigate('/login')}
                             className="px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full font-bold text-white shadow-lg shadow-blue-500/25 hover:shadow-cyan-500/40 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 group"
                         >
                             Try for Free
@@ -119,7 +119,7 @@ export function Landing() {
                                 <div className="w-3 h-3 rounded-full bg-green-500/80" />
                             </div>
                             <div className="ml-4 flex-1 max-w-sm h-6 bg-slate-800/50 rounded-md flex items-center px-3 text-[10px] text-slate-500 font-mono">
-                                bernard.ai/dashboard
+                                chauncey.ai/dashboard
                             </div>
                         </div>
 
