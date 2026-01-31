@@ -261,6 +261,46 @@ app.get('/api/leads/export.csv', async (req, res) => {
     }
 });
 
+// ==========================================
+// AI AGENT ROUTES (OPENAI)
+// ==========================================
+
+app.post('/api/ai/create-job', async (req, res) => {
+    try {
+        const { prompt, contextLocation } = req.body;
+        if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+
+        log(`🧠 AI Analyzing: "${prompt}"...`);
+
+        // Use OpenAI to parse intent
+        const analysis = await parseIntent(prompt, contextLocation || 'Raleigh, NC');
+
+        log(`✨ AI Decided: ${JSON.stringify(analysis)}`);
+
+        // Update settings with AI findings
+        const config = readSettingsSafe();
+        if (analysis.city) config.city = analysis.city;
+        if (analysis.state) config.state = analysis.state;
+        if (analysis.niche) config.niche = analysis.niche;
+
+        // Save config
+        writeSettingsSafe(config);
+
+        // Auto-start if valid
+        if (analysis.niche) {
+            runScraper();
+            res.json({ success: true, analysis, message: 'AI Agent started the job' });
+        } else {
+            res.json({ success: false, analysis, message: 'Could not determine niche' });
+        }
+
+    } catch (error) {
+        console.error('AI Job Error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
 function log(msg) {
     const entry = `[${new Date().toISOString()}] ${msg}`;
     logs.push(entry);
