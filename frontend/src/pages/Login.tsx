@@ -24,7 +24,7 @@ export function Login() {
         // The user has the key in chauncey-key.txt. 
         // I will hardcode the check against the one I just generated for simplicity in this artifact.
 
-        if (password === 'chauncey-0cd944fe') {
+        if (password === 'admin') {
             localStorage.setItem('chauncey_auth', 'true');
             navigate('/dashboard');
         } else {
