@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { Send, MessageSquare, Mail, Phone, Clock, Plus, Filter, Search, MoreHorizontal, CheckCircle2 } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
+import { Send, MessageSquare, Mail, Clock, Plus, MoreHorizontal, CheckCircle2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
 
 export function Outreach() {

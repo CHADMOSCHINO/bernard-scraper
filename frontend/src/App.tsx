@@ -1,3 +1,4 @@
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from '@/components/layout/Layout';
 import { Dashboard } from '@/pages/Dashboard';
@@ -11,7 +12,7 @@ import { Login } from '@/pages/Login';
 import { Outreach } from '@/pages/Outreach';
 
 // Simple Auth Wrapper
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
     const isAuthenticated = localStorage.getItem('chauncey_auth') === 'true';
     if (!isAuthenticated) {
         return <Navigate to="/login" replace />;

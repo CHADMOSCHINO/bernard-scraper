@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Lock, ArrowRight, ShieldCheck, AlertCircle } from 'lucide-react';
+import { Lock, ShieldCheck, AlertCircle } from 'lucide-react';
 
 export function Login() {
     const [password, setPassword] = useState('');
