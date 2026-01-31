@@ -76,7 +76,7 @@ export function DashboardHeader({ onOpenMissionControl }: DashboardHeaderProps) 
                     </button>
 
                     <div className="w-10 h-10 flex items-center justify-center">
-                        <img src="/logo.png" alt="Bernard Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
+                        <img src="/src/assets/chauncey_logo.png" alt="Chauncey Logo" className="w-full h-full object-contain drop-shadow-[0_0_15px_rgba(59,130,246,0.5)]" />
                     </div>
                     <div className="hidden md:block">
                         <h1 className="text-xl font-bold text-foreground">Welcome, {profile.name.split(' ')[0]}</h1>
@@ -245,9 +245,9 @@ export function DashboardHeader({ onOpenMissionControl }: DashboardHeaderProps) 
                             <div className="flex items-center justify-between mb-8">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 flex items-center justify-center">
-                                        <img src="/logo.png" alt="Bernard" className="w-full h-full object-contain" />
+                                        <img src="/src/assets/chauncey_logo.png" alt="Chauncey" className="w-full h-full object-contain" />
                                     </div>
-                                    <span className="text-lg font-bold">Bernard</span>
+                                    <span className="text-lg font-bold">Chauncey</span>
                                 </div>
                                 <button onClick={() => setIsMobileMenuOpen(false)} className="text-slate-400 hover:text-white">
                                     <X className="w-6 h-6" />

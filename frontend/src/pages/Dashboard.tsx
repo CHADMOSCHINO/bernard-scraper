@@ -144,12 +144,32 @@ export function Dashboard() {
                 animate={{ opacity: 1, y: 0 }}
                 className="col-span-12 mb-2 px-1"
               >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h1 className="text-2xl lg:text-3xl font-black tracking-tight-premium text-gradient-premium">
-                      Lead Command Center
-                    </h1>
-                    <p className="text-[10px] lg:text-xs text-slate-500 mt-0.5 uppercase tracking-widest font-bold">Real-time intelligence • Engine Active</p>
+                <div className="flex flex-col items-center justify-center text-center py-10">
+                  <h1 className="text-6xl md:text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-500 tracking-tighter mb-4 drop-shadow-2xl">
+                    Chauncey
+                  </h1>
+                  <p className="text-xl text-slate-400 font-medium mb-8 flex items-center gap-2">
+                    Your <span className="bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded text-sm font-bold border border-blue-500/30 flex items-center gap-1"><Sparkles className="w-3 h-3" /> AI</span> lead scraper
+                  </p>
+
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={() => setIsMissionControlOpen(true)}
+                      className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-bold shadow-lg hover:shadow-blue-500/25 hover:scale-105 transition-all flex items-center gap-2"
+                    >
+                      <Zap className="w-4 h-4 text-yellow-300" />
+                      Single Scan
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Trigger auto run via API or open modal 
+                        setIsMissionControlOpen(true);
+                      }}
+                      className="px-6 py-3 rounded-xl bg-[#1F2937] hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white font-bold transition-all flex items-center gap-2"
+                    >
+                      <Clock className="w-4 h-4" />
+                      5-Day Auto Run
+                    </button>
                   </div>
                 </div>
               </motion.div>
